@@ -262,7 +262,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
 
       if (tracks.length === 0 && page === 1) {
         const ytQuery = lang !== "all" ? `${q} ${lang}` : q;
-        const ytRes = await fetch(`/api/youtube-search?q=${encodeURIComponent(ytQuery)}`);
+        const ytRes = await fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(ytQuery)}`);
         if (ytRes.ok) {
           const ytVideos = await ytRes.json();
           tracks = ytVideos.map((v: any, i: number) => ({
@@ -297,7 +297,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
   const searchYouTubeOnly = useCallback(async (q: string, page = 1) => {
     try {
       const finalQ = page > 1 ? `${q} part ${page}` : q; 
-      const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(finalQ)}`);
+      const res = await fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(finalQ)}`);
       if (!res.ok) return [];
       const videos = await res.json();
       return videos.map((v: any, i: number) => ({

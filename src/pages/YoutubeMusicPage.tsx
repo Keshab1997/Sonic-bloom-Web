@@ -4,8 +4,8 @@ import { usePlayer } from "@/context/PlayerContext";
 import { Track } from "@/data/playlist";
 import { toast } from "sonner";
 
-const YT_API = "/api/youtube-search";
-const YT_STREAM_API = "/api/yt-stream";
+const YT_API = "/.netlify/functions/youtube-search";
+const YT_STREAM_API = "/.netlify/functions/yt-stream";
 const DEBOUNCE_MS = 450;
 const RECENT_SEARCHES_KEY = "yt_recent_searches";
 const MAX_RECENT = 8;
