@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { Track, playlist } from "@/data/playlist";
 import ReactPlayer from "react-player";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useLocalData } from "@/hooks/useLocalData";
+import { useRecentlyPlayed } from "@/hooks/useRecentlyPlayed";
 import {
   DEFAULT_VOLUME,
   DEFAULT_AUDIO_QUALITY,
@@ -108,6 +110,10 @@ const QUALITY_KEY = STORAGE_KEY_QUALITY;
 const EQ_KEY = STORAGE_KEY_EQ;
 
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // History hooks - call at component level
+  const { addToHistory: addToSearchHistory } = useLocalData();
+  const { addToHistory: addToPlayHistory } = useRecentlyPlayed();
+
   const [trackList, setTrackList] = useState<Track[]>(playlist);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -198,6 +204,15 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const crossfadeRef = useRef(0);
 
   const currentTrack = trackList[currentIndex] || null;
+
+  // History management function
+  const addToHistory = useCallback((query: string | Track) => {
+    if (typeof query === 'string') {
+      addToSearchHistory(query);
+    } else {
+      addToPlayHistory(query);
+    }
+  }, [addToSearchHistory, addToPlayHistory]);
 
   const setupAudioContext = useCallback(() => {
     if (audioCtxRef.current || !audioRef.current) return;
@@ -977,6 +992,75 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [currentIndex, currentTrack]);
 
+  // Get audio src based on quality preference
+  const getAudioSrc = useCallback((): string | undefined => {
+    if (!currentTrack) return undefined;
+
+    // YouTube tracks: return undefined — handled by ReactPlayer separately
+    if (currentTrack.type === "youtube") {
+      return undefined;
+    }
+
+    // If track has quality variants, use the selected quality
+    if (currentTrack.audioUrls) {
+      const url = currentTrack.audioUrls[quality];
+      if (url) return url;
+      // Fallback to any available quality
+      return currentTrack.audioUrls["160kbps"] || currentTrack.audioUrls["96kbps"] || currentTrack.audioUrls["320kbps"] || currentTrack.src;
+    }
+
+    // Proxy SoundHelix URLs
+    if (currentTrack.src.includes("soundhelix.com")) {
+      const path = new URL(currentTrack.src).pathname;
+      return `/api/proxy-audio?path=${encodeURIComponent(path)}`;
+    }
+    return currentTrack.src;
+  }, [currentTrack, quality]);
+
+  // Handle quality changes - update audio src without stopping playback
+  useEffect(() => {
+    if (!currentTrack || currentTrack.type === "youtube" || !audioRef.current) return;
+
+    const audio = audioRef.current;
+    const wasPlaying = !audio.paused;
+    const currentTime = audio.currentTime;
+
+    // Only update if the track has quality variants and we're not already at the right quality
+    if (currentTrack.audioUrls) {
+      const newSrc = getAudioSrc();
+      const currentSrc = audio.src;
+
+      // Check if we need to update the src (avoid unnecessary updates)
+      if (newSrc && currentSrc !== newSrc) {
+        // Store current playback state
+        const wasPlayingBefore = wasPlaying;
+
+        // Pause current playback
+        audio.pause();
+
+        // Update src
+        audio.src = newSrc;
+
+        // When metadata loads, seek to previous position and resume if was playing
+        const handleLoadedMetadata = () => {
+          audio.currentTime = currentTime;
+          if (wasPlayingBefore) {
+            audio.play().catch(() => {
+              // If autoplay fails, just update the position
+              setProgress(currentTime);
+            });
+          }
+          audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        };
+
+        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+        // Load the new source
+        audio.load();
+      }
+    }
+  }, [quality, currentTrack, getAudioSrc]);
+
   // Preload next track audio for gapless-like playback
   // Preload next track using fetch (browser cache)
   useEffect(() => {
@@ -1005,31 +1089,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (link) link.href = "/favicon.ico";
     }
   }, [currentTrack, isPlaying]);
-
-  // Get audio src based on quality preference
-  const getAudioSrc = (): string | undefined => {
-    if (!currentTrack) return undefined;
-
-    // YouTube tracks: return undefined — handled by ReactPlayer separately
-    if (currentTrack.type === "youtube") {
-      return undefined;
-    }
-
-    // If track has quality variants, use the selected quality
-    if (currentTrack.audioUrls) {
-      const url = currentTrack.audioUrls[quality];
-      if (url) return url;
-      // Fallback to any available quality
-      return currentTrack.audioUrls["160kbps"] || currentTrack.audioUrls["96kbps"] || currentTrack.audioUrls["320kbps"] || currentTrack.src;
-    }
-
-    // Proxy SoundHelix URLs
-    if (currentTrack.src.includes("soundhelix.com")) {
-      const path = new URL(currentTrack.src).pathname;
-      return `/api/proxy-audio?path=${encodeURIComponent(path)}`;
-    }
-    return currentTrack.src;
-  };
 
   const contextValue = useMemo(() => ({
     tracks: trackList,

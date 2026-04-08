@@ -129,7 +129,7 @@ sonic-bloom-player/
 
 ## Deployment
 
-### Vercel
+### Vercel (Recommended)
 
 The project is configured for easy deployment on Vercel:
 
@@ -137,9 +137,58 @@ The project is configured for easy deployment on Vercel:
 vercel deploy
 ```
 
+### Netlify (Recommended)
+
+For full functionality deployment on Netlify:
+
+1. **Connect GitHub Repository**:
+   - Go to [Netlify](https://netlify.com)
+   - Click "New site from Git"
+   - Connect your GitHub repository
+
+2. **Build Settings**:
+   - **Build command:** `npm run build:netlify`
+   - **Publish directory:** `dist`
+   - **Node version:** `18`
+
+3. **Environment Variables** (Optional):
+   - `YOUTUBE_API_KEY` - For YouTube search functionality
+
+**Benefits**:
+- ✅ Full API functionality with serverless functions
+- ✅ Automatic deployments on code changes
+- ✅ Global CDN and HTTPS included
+- ✅ Better performance than GitHub Pages
+
+### GitHub Pages (Limited)
+
+For static deployment on GitHub Pages:
+
+1. **Update Repository Name** in `vite.config.ts`:
+   ```typescript
+   base: process.env.NODE_ENV === 'production' ? '/YOUR-REPO-NAME/' : '/',
+   ```
+
+2. **Install and Build**:
+   ```bash
+   npm install
+   npm run build:gh-pages
+   npm run deploy
+   ```
+
+3. **Enable GitHub Pages**:
+   - Go to Repository Settings → Pages
+   - Set Source to "Deploy from a branch" and select `gh-pages` branch
+   - Or use GitHub Actions (workflow included)
+
+**Note**: GitHub Pages deployment has limitations:
+- YouTube search requires API key (limited functionality)
+- Some streaming features may not work
+- For full functionality, use Vercel or Netlify
+
 ### Environment Setup
 
-Set the `ALLOWED_ORIGIN` environment variable in Vercel dashboard to your production domain.
+Set the `ALLOWED_ORIGIN` environment variable in your deployment platform to your production domain.
 
 ## Contributing
 
