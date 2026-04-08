@@ -220,7 +220,7 @@ export const MainContent = () => {
       "Sunday Suspense Byomkesh",
     ];
     const suspenseQ = suspenseYtQueries[Math.floor(Math.random() * suspenseYtQueries.length)];
-    fetch(`/api/youtube-search?q=${encodeURIComponent(suspenseQ)}`)
+    fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(suspenseQ)}`)
       .then((r) => r.json())
       .then((videos: { videoId: string; title: string; author: string; duration: number; thumbnail: string }[]) => {
         const tracks: Track[] = videos.slice(0, 10).map((v, i) => ({
@@ -240,7 +240,7 @@ export const MainContent = () => {
     // YouTube Trending
     const ytQueries = ["top hindi songs 2026 trending", "viral bengali songs 2026"];
     const ytQ = ytQueries[Math.floor(Math.random() * ytQueries.length)];
-    fetch(`/api/youtube-search?q=${encodeURIComponent(ytQ)}`)
+    fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(ytQ)}`)
       .then((r) => r.json())
       .then(async (videos: { videoId: string; title: string; author: string; duration: number; thumbnail: string }[]) => {
         const tracks: Track[] = videos.slice(0, 10).map((v, i) => ({
@@ -575,7 +575,7 @@ export const MainContent = () => {
   const handleYtQuickPlay = useCallback(async (query: string) => {
     setYtLoadingQuery(query);
     try {
-      const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(query)}`);
       if (!res.ok) return;
       const videos: { videoId: string; title: string; author: string; duration: number; thumbnail: string }[] = await res.json();
       const tracks: Track[] = videos.slice(0, 15).map((v, i) => ({
@@ -1850,7 +1850,7 @@ export const MainContent = () => {
           onRefresh={async () => {
             const queries = ["Sunday Suspense Mirchi Bangla", "Sunday Suspense 2024", "Sunday Suspense Saradindu", "Sunday Suspense Feluda", "Sunday Suspense Byomkesh"];
             const q = queries[Math.floor(Math.random() * queries.length)];
-            const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(q)}`).catch(() => null);
+            const res = await fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(q)}`).catch(() => null);
             if (!res?.ok) return [];
             const videos: { videoId: string; title: string; author: string; duration: number; thumbnail: string }[] = await res.json();
             return videos.slice(0, 10).map((v, i) => ({

@@ -137,9 +137,9 @@ The project is configured for easy deployment on Vercel:
 vercel deploy
 ```
 
-### Netlify (Recommended)
+### Netlify (Static Site)
 
-For full functionality deployment on Netlify:
+For static site deployment on Netlify (limited functionality):
 
 1. **Connect GitHub Repository**:
    - Go to [Netlify](https://netlify.com)
@@ -151,8 +151,20 @@ For full functionality deployment on Netlify:
    - **Publish directory:** `dist`
    - **Node version:** `18`
 
-3. **Environment Variables** (Optional):
-   - `YOUTUBE_API_KEY` - For YouTube search functionality
+**Working Features:**
+- ✅ Static UI and player controls
+- ✅ YouTube embed playback (direct URLs)
+- ✅ Local file upload and playback
+- ✅ Audio quality switching
+- ✅ Settings and preferences
+- ✅ PWA support
+
+**Limited Features:**
+- ❌ YouTube search (requires API key)
+- ❌ Audio streaming (requires backend)
+- ❌ Advanced search features
+
+**Note:** For full YouTube search and streaming functionality, use Vercel deployment.
 
 **Benefits**:
 - ✅ Full API functionality with serverless functions

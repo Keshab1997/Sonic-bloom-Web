@@ -4,8 +4,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { Track } from "@/data/playlist";
 import { toast } from "sonner";
 
-// For Netlify static deployment - YouTube search not available
-const YT_API = null;
+const YT_API = "/.netlify/functions/youtube-search";
 const YT_STREAM_API = null;
 const DEBOUNCE_MS = 450;
 const RECENT_SEARCHES_KEY = "yt_recent_searches";
@@ -226,16 +225,6 @@ export default function YoutubeMusicPage() {
       return cached.tracks;
     }
 
-    // For Netlify static deployment - YouTube search not available
-    if (!YT_API) {
-      if (pageNum === 0) {
-        toast.info("YouTube search requires backend API. Use Vercel deployment for full functionality.", {
-          duration: 5000,
-        });
-      }
-      return [];
-    }
-
     try {
       const res = await fetch(`${YT_API}?q=${encodeURIComponent(finalQuery)}&page=${pageNum}`);
       if (!res.ok) return [];
@@ -272,12 +261,6 @@ export default function YoutubeMusicPage() {
     setSectionsLoading(prev => ({ ...prev, [sectionId]: true }));
     const sectionSeenIds = new Set<string>();
     
-    // For Netlify static deployment - YouTube search not available
-    if (!YT_API) {
-      setSectionsLoading(prev => ({ ...prev, [sectionId]: false }));
-      return;
-    }
-
     try {
       const suffix = getRandomSuffix();
       const res = await fetch(`${YT_API}?q=${encodeURIComponent(query + suffix)}`);
