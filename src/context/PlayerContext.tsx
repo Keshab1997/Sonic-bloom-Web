@@ -3,8 +3,6 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { Track, playlist } from "@/data/playlist";
 import ReactPlayer from "react-player";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { useListeningHistory } from "@/hooks/useSupabaseListeningHistory";
-import { useLikedSongs } from "@/hooks/useSupabaseLikedSongs";
 import {
   DEFAULT_VOLUME,
   DEFAULT_AUDIO_QUALITY,
@@ -84,11 +82,6 @@ interface PlayerContextType {
   sleepMinutes: number | null;
   setSleepTimer: (minutes: number) => void;
   cancelSleepTimer: () => void;
-  // Supabase integration
-  isCurrentTrackLiked: boolean;
-  likeCurrentTrack: () => Promise<boolean>;
-  unlikeCurrentTrack: () => Promise<boolean>;
-  addToListeningHistory: (trackId: string, durationPlayed: number, completed: boolean) => Promise<boolean>;
   // Playback
   play: (index?: number) => void;
   playTrack: (track: Track) => void;
@@ -123,10 +116,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<"off" | "all" | "one">("off");
-
-  // Supabase hooks
-  const { addToHistory } = useListeningHistory();
-  const { likeSong: likeSongHook, unlikeSong: unlikeSongHook, isLiked: isLikedHook } = useLikedSongs();
 
   // Wake lock to prevent device from sleeping while playing
   useWakeLock(isPlaying);
@@ -816,10 +805,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         clearInterval(crossfadeInterval);
         crossfadeInterval = null;
       }
-      // Track completed song in Supabase
-      if (currentTrack) {
-        addToHistory(String(currentTrack.id), audio.duration || 0, true).catch(() => {});
-      }
       if (repeat === "one") {
         audio.currentTime = 0;
         audio.play();
@@ -1093,20 +1078,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setVolume,
     toggleShuffle,
     toggleRepeat,
-    // Supabase
-    isCurrentTrackLiked: currentTrack ? isLikedHook(String(currentTrack.id)) : false,
-    likeCurrentTrack: () => (currentTrack ? likeSongHook({
-      id: String(currentTrack.id),
-      title: currentTrack.title,
-      artist: currentTrack.artist,
-      album: currentTrack.album,
-      duration: currentTrack.duration,
-      youtube_id: currentTrack.songId,
-      cover_url: currentTrack.cover,
-      audio_url: currentTrack.src
-    }) : Promise.resolve(false)),
-    unlikeCurrentTrack: () => (currentTrack ? unlikeSongHook(String(currentTrack.id)) : Promise.resolve(false)),
-    addToListeningHistory: addToHistory,
   }), [
     trackList, currentTrack, currentIndex, isPlaying, progress, duration,
     volume, shuffle, repeat, eqBass, eqMid, eqTreble, playbackSpeed,
@@ -1115,7 +1086,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     addToQueue, playNext, removeFromQueue, clearQueue, moveQueueItem, shuffleQueue,
     setEqBass, setEqMid, setEqTreble, applyEqPreset, setPlaybackSpeed,
     setCrossfade, setQuality, setSleepTimer, cancelSleepTimer,
-    isLikedHook, likeSongHook, unlikeSongHook, addToHistory,
   ]);
 
   return (
