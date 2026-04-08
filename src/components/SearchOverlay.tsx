@@ -262,15 +262,20 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
 
       if (tracks.length === 0 && page === 1) {
         const ytQuery = lang !== "all" ? `${q} ${lang}` : q;
-        const ytRes = await fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(ytQuery)}`);
-        if (ytRes.ok) {
-          const ytVideos = await ytRes.json();
-          tracks = ytVideos.map((v: any, i: number) => ({
-            id: 90000 + i, title: extractText(v.title), artist: extractText(v.author) || "YouTube", album: "YouTube Search",
-            cover: extractText(v.thumbnail) || "", src: `https://www.youtube.com/watch?v=${v.videoId}`,
-            duration: parseInt(String(v.duration)) || 0, type: "youtube" as const, songId: v.videoId,
-          }));
-          total = tracks.length; isYt = true;
+        try {
+          const ytRes = await fetch(`/api/youtube-search?q=${encodeURIComponent(ytQuery)}`);
+          if (ytRes.ok) {
+            const ytVideos = await ytRes.json();
+            tracks = ytVideos.map((v: any, i: number) => ({
+              id: 90000 + i, title: extractText(v.title), artist: extractText(v.author) || "YouTube", album: "YouTube Search",
+              cover: extractText(v.thumbnail) || "", src: `https://www.youtube.com/watch?v=${v.videoId}`,
+              duration: parseInt(String(v.duration)) || 0, type: "youtube" as const, songId: v.videoId,
+            }));
+            total = tracks.length; isYt = true;
+          }
+        } catch {
+          // YouTube search not available on static deployment
+          console.log('YouTube search requires backend API');
         }
       }
       
@@ -296,9 +301,9 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
 
   const searchYouTubeOnly = useCallback(async (q: string, page = 1) => {
     try {
-      const finalQ = page > 1 ? `${q} part ${page}` : q; 
-      const res = await fetch(`/.netlify/functions/youtube-search?q=${encodeURIComponent(finalQ)}`);
-      if (!res.ok) return [];
+      const finalQ = page > 1 ? `${q} part ${page}` : q;
+      const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(finalQ)}`).catch(() => null);
+      if (!res || !res.ok) return [];
       const videos = await res.json();
       return videos.map((v: any, i: number) => ({
         id: 95000 + (page - 1) * 20 + i,
