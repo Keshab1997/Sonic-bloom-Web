@@ -30,6 +30,8 @@ exports.handler = async (event, context) => {
     }
 
     const API_KEY = process.env.YOUTUBE_API_KEY;
+    console.log('API Key available:', !!API_KEY); // Debug log
+
     if (!API_KEY) {
       return {
         statusCode: 200,
@@ -42,17 +44,33 @@ exports.handler = async (event, context) => {
     }
 
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(query + ' music')}&key=${API_KEY}`;
+    console.log('Search URL:', searchUrl.replace(API_KEY, 'HIDDEN')); // Debug log without exposing key
 
     const response = await fetch(searchUrl);
     const data = await response.json();
 
+    console.log('API Response status:', response.status); // Debug log
+    console.log('API Response data:', JSON.stringify(data, null, 2)); // Debug log
+
     if (data.error) {
+      console.error('YouTube API error:', data.error);
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({
           error: 'YouTube API error',
           details: data.error.message
+        })
+      };
+    }
+
+    if (!data.items || data.items.length === 0) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          videos: [],
+          message: 'No videos found for this search'
         })
       };
     }
@@ -64,6 +82,8 @@ exports.handler = async (event, context) => {
       thumbnail: item.snippet.thumbnails.default?.url || item.snippet.thumbnails.medium?.url,
       duration: 0
     }));
+
+    console.log('Processed videos:', videos.length); // Debug log
 
     return {
       statusCode: 200,
