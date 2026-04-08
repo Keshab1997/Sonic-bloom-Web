@@ -1,5 +1,3 @@
-const { createClient } = require('@supabase/supabase-js');
-
 // YouTube Search API for Netlify
 exports.handler = async (event, context) => {
   // CORS headers
