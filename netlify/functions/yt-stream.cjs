@@ -1,4 +1,4 @@
-// Audio streaming function for Netlify
+// Simplified Audio streaming function for Netlify
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -10,41 +10,14 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  try {
-    const { url, quality = '160kbps' } = event.queryStringParameters || {};
+  const { url } = event.queryStringParameters || {};
 
-    if (!url) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Missing URL parameter' })
-      };
-    }
-
-    // For Netlify, we'll proxy the audio URL
-    // Note: This is a simplified version. For production, consider using a proper audio extraction service
-
-    const audioUrl = decodeURIComponent(url);
-
-    return {
-      statusCode: 200,
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: audioUrl,
-        quality,
-        message: 'Direct URL returned. For full functionality, consider using Vercel or a dedicated audio service.'
-      })
-    };
-
-  } catch (error) {
-    console.error('Audio stream error:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Streaming failed', details: error.message })
-    };
-  }
+  return {
+    statusCode: 200,
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: url || '',
+      message: 'Audio streaming requires backend service. Consider using Vercel for full functionality.'
+    })
+  };
 };
