@@ -410,6 +410,9 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
 
   const loadSongPage = useCallback(async (page: number) => {
     setLoading(true); setActiveMenu(null); g_scrollPos = 0;
+    // bypass cache for explicit page navigation
+    const cacheKey = `${query}_${langFilter}_${page}`;
+    g_pageCache.delete(cacheKey);
     const data = await searchSongs(query, langFilter, page);
     setSongResults(data.tracks); setCurrentPage(page); setTotalResults(data.total);
     setLoading(false);
@@ -947,12 +950,10 @@ const SongRow = ({
                                   e.preventDefault();
                                   e.stopPropagation();
                                   const targetPage = parseInt(pageInputValue, 10);
-                                  const maxPage = Math.ceil(totalResults / SONGS_PER_PAGE);
-                                  if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= maxPage) {
+                                  if (!isNaN(targetPage) && targetPage >= 1) {
                                     loadSongPage(targetPage);
                                   } else {
                                     setPageInputValue(currentPage.toString());
-                                    toast.error(`Valid pages: 1 to ${maxPage}`);
                                   }
                                 }
                               }}
