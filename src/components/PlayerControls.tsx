@@ -1,5 +1,6 @@
 import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1 } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 
 interface PlayerControlsProps {
   showLyrics?: boolean;
@@ -25,8 +26,6 @@ export const PlayerControls = ({
   const {
     currentTrack,
     isPlaying,
-    progress,
-    duration,
     shuffle,
     repeat,
     togglePlay,
@@ -34,6 +33,7 @@ export const PlayerControls = ({
     prev,
     seek,
   } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
 
   if (!currentTrack) return null;
 

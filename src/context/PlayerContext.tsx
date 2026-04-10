@@ -5,6 +5,7 @@ import ReactPlayer from "react-player";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useRecentlyPlayed } from "@/hooks/useRecentlyPlayed";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 import {
   DEFAULT_VOLUME,
   DEFAULT_AUDIO_QUALITY,
@@ -48,8 +49,6 @@ interface PlayerContextType {
   currentTrack: Track | null;
   currentIndex: number;
   isPlaying: boolean;
-  progress: number;
-  duration: number;
   volume: number;
   shuffle: boolean;
   repeat: "off" | "all" | "one";
@@ -114,11 +113,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { addToHistory: addToSearchHistory } = useLocalData();
   const { addToHistory: addToPlayHistory } = useRecentlyPlayed();
 
+  // Progress/duration from dedicated context to avoid re-rendering all consumers
+  const { progress, duration, setProgress, setDuration } = usePlayerProgress();
+
   const [trackList, setTrackList] = useState<Track[]>(playlist);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<"off" | "all" | "one">("off");
@@ -1095,8 +1095,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     currentTrack,
     currentIndex,
     isPlaying,
-    progress,
-    duration,
     volume,
     shuffle,
     repeat,
@@ -1138,7 +1136,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     toggleShuffle,
     toggleRepeat,
   }), [
-    trackList, currentTrack, currentIndex, isPlaying, progress, duration,
+    trackList, currentTrack, currentIndex, isPlaying,
     volume, shuffle, repeat, eqBass, eqMid, eqTreble, playbackSpeed,
     crossfade, queue, quality, sleepMinutes, play, playTrack, playTrackList,
     pause, togglePlay, next, prev, seek, setVolume, toggleShuffle, toggleRepeat,

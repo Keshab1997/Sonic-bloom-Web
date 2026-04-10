@@ -8,6 +8,7 @@ import {
   Moon, Sun, Sliders, Settings,
 } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useTheme } from "@/hooks/useTheme";
 import { SyncedLyrics } from "@/components/SyncedLyrics";
@@ -32,11 +33,12 @@ export const FullScreenPlayer = ({
   onClose, onShowPlaylist, onShowLyrics, onShowEqualizer,
 }: FullScreenPlayerProps) => {
   const {
-    currentTrack, isPlaying, progress, duration,
+    currentTrack, isPlaying,
     shuffle, repeat, togglePlay, next, prev, seek,
     toggleShuffle, toggleRepeat, tracks, currentIndex,
     volume, setVolume, quality,
   } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
 
   const { isFavorite, toggleFavorite } = useLocalData();
   const { theme, toggleTheme } = useTheme();

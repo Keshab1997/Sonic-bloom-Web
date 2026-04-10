@@ -33,6 +33,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { usePlayer, AudioQuality } from "@/context/PlayerContext";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 import { useLocalData } from "@/hooks/useLocalData";
 import { useDownloads } from "@/hooks/useDownloads";
 import { usePlaylists } from "@/hooks/usePlaylists";
@@ -68,8 +69,6 @@ export const BottomPlayer = ({ onShowMiniPlayer, onShowEqualizer: _onShowEqualiz
   const {
     currentTrack,
     isPlaying,
-    progress,
-    duration,
     volume,
     shuffle,
     repeat,
@@ -101,6 +100,7 @@ export const BottomPlayer = ({ onShowMiniPlayer, onShowEqualizer: _onShowEqualiz
     crossfade,
     setCrossfade,
   } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
 
   const { isFavorite, toggleFavorite } = useLocalData();
   const { playlists, createPlaylist, addToPlaylist } = usePlaylists();

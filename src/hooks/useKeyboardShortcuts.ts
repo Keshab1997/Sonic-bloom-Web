@@ -1,6 +1,7 @@
 
 import { useEffect } from "react";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 
 export const KEYBOARD_SHORTCUTS = [
   { key: "Space", description: "Play / Pause" },
@@ -24,7 +25,8 @@ export const useKeyboardShortcuts = (callbacks?: {
   onLike?: () => void;
   onShowShortcuts?: () => void;
 }) => {
-  const { togglePlay, next, prev, setVolume, volume, toggleShuffle, toggleRepeat, seek, progress, duration } = usePlayer();
+  const { togglePlay, next, prev, setVolume, volume, toggleShuffle, toggleRepeat, seek } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

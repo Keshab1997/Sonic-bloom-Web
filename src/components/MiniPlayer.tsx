@@ -1,6 +1,7 @@
 
 import { Play, Pause, SkipForward, X, Maximize2, ListPlus } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 import { usePlaylists } from "@/hooks/usePlaylists";
 import { toast } from "sonner";
 
@@ -10,7 +11,8 @@ interface MiniPlayerProps {
 }
 
 export const MiniPlayer = ({ onExpand, onClose }: MiniPlayerProps) => {
-  const { currentTrack, isPlaying, togglePlay, next, progress, duration, tracks, playTrackList } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, next, tracks, playTrackList } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
   const { createPlaylist, addToPlaylist } = usePlaylists();
 
   const handleNewPlaylist = () => {

@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlayerProvider } from "@/context/PlayerContext";
+import { PlayerProgressProvider } from "@/context/PlayerProgressContext";
 import { DJMixerProvider } from "@/context/DJMixerContext";
 import { AppShell } from "@/components/AppShell";
 import { MainContent } from "@/components/MainContent";
@@ -31,7 +32,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <PlayerProvider>
+        <PlayerProgressProvider>
+          <PlayerProvider>
           <DJMixerProvider>
             <Routes>
               <Route path="/" element={<AppShell><ErrorBoundary><MainContent /></ErrorBoundary></AppShell>} />
@@ -43,7 +45,8 @@ const App = () => (
               <Route path="*" element={<ErrorBoundary><Suspense fallback={<PageLoader />}><NotFound /></Suspense></ErrorBoundary>} />
             </Routes>
           </DJMixerProvider>
-        </PlayerProvider>
+          </PlayerProvider>
+        </PlayerProgressProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -8,6 +8,7 @@ import { MiniPlayer } from "@/components/MiniPlayer";
 import { ShortcutsPanel } from "@/components/ShortcutsPanel";
 import { PWAInstallPrompt, usePWAInstall } from "@/components/PWAInstallPrompt";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePlayerProgress } from "@/context/PlayerProgressContext";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useCoverGradient } from "@/hooks/useCoverGradient";
 import { useOffline } from "@/hooks/useOffline";
@@ -18,7 +19,8 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ children }: AppShellProps) => {
-  const { currentTrack, isPlaying, progress, duration, play, pause, next, prev, seek } = usePlayer();
+  const { currentTrack, isPlaying, play, pause, next, prev, seek } = usePlayer();
+  const { progress, duration } = usePlayerProgress();
   const { gradient } = useCoverGradient(currentTrack?.cover);
   const [showMiniPlayer, setShowMiniPlayer] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
