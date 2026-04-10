@@ -156,7 +156,8 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
   const [playlistResults, setPlaylistResults] = useState<any[]>(g_playlistResults);
   const [topResult, setTopResult] = useState<any | null>(g_topResult);
 
-  const [artistSongs, setArtistSongs] = useState<{ name: string; songs: Track[] } | null>(g_artistSongs);
+  const [artistSongs, setArtistSongs] = useState<{ name: string; songs: Track[]; page: number; hasMore: boolean } | null>(g_artistSongs);
+  const [artistLoadingMore, setArtistLoadingMore] = useState(false);
   const [artistLoading, setArtistLoading] = useState(false);
   const [albumSongs, setAlbumSongs] = useState<{ name: string; id: string; songs: Track[] } | null>(g_albumSongs);
   const [albumLoading, setAlbumLoading] = useState(false);
@@ -543,19 +544,27 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
     }
   };
 
-  const fetchArtistSongs = async (artistName: string) => {
-    setArtistLoading(true); g_scrollPos = 0;
+  const fetchArtistSongs = async (artistName: string, page = 1, append = false) => {
+    if (append) setArtistLoadingMore(true);
+    else setArtistLoading(true);
+    g_scrollPos = 0;
     try {
-      const res = await fetch(`${API_BASE}/search/songs?query=${encodeURIComponent(artistName)}&page=1&limit=30`);
+      const res = await fetch(`${API_BASE}/search/songs?query=${encodeURIComponent(artistName)}&page=${page}&limit=50`);
       const json = await res.json();
       const tracks: Track[] = [];
-      (json.data?.results || []).filter((s: any) => (s.downloadUrl?.length ?? 0) > 0).slice(0, 30).forEach((s: any, i: number) => {
-        const track = parseSongToTrack(s, 9000 + i);
+      (json.data?.results || []).filter((s: any) => (s.downloadUrl?.length ?? 0) > 0).forEach((s: any, i: number) => {
+        const track = parseSongToTrack(s, 9000 + (page - 1) * 50 + i);
         if (track) tracks.push(track);
       });
-      setArtistSongs({ name: artistName, songs: tracks });
+      const hasMore = tracks.length === 50;
+      if (append) {
+        setArtistSongs(prev => prev ? { ...prev, songs: [...prev.songs, ...tracks], page, hasMore } : null);
+      } else {
+        setArtistSongs({ name: artistName, songs: tracks, page, hasMore });
+      }
     } catch {}
-    setArtistLoading(false);
+    if (append) setArtistLoadingMore(false);
+    else setArtistLoading(false);
   };
 
   const fetchAlbumSongs = async (albumId: string, albumName: string) => {
@@ -965,8 +974,36 @@ const SongRow = ({
                 )}
                 {artistSongs && (
                   <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4 px-2"><h3 className="text-sm font-bold text-foreground flex items-center gap-2"><User size={16} className="text-primary" /> {artistSongs.name}</h3><button onClick={() => { setArtistSongs(null); g_scrollPos = 0; }} className="p-1.5 rounded-full bg-muted hover:bg-accent"><X size={16} /></button></div>
-                    {artistLoading ? <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : <div className="space-y-0.5">{artistSongs.songs.map((track, i) => renderSongRow(track, artistSongs.songs, i))}</div>}
+                    <div className="flex items-center justify-between mb-4 px-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <User size={16} className="text-primary" /> {artistSongs.name}
+                        <span className="text-xs text-muted-foreground font-normal">({artistSongs.songs.length} songs)</span>
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { playTrackList(artistSongs.songs, 0); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:brightness-110 transition-all"
+                        >
+                          <Play size={12} fill="currentColor" /> Play All
+                        </button>
+                        <button onClick={() => { setArtistSongs(null); g_scrollPos = 0; }} className="p-1.5 rounded-full bg-muted hover:bg-accent"><X size={16} /></button>
+                      </div>
+                    </div>
+                    {artistLoading ? <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : (
+                      <>
+                        <div className="space-y-0.5">{artistSongs.songs.map((track, i) => renderSongRow(track, artistSongs.songs, i))}</div>
+                        {artistSongs.hasMore && (
+                          <button
+                            onClick={() => fetchArtistSongs(artistSongs.name, artistSongs.page + 1, true)}
+                            disabled={artistLoadingMore}
+                            className="w-full mt-3 py-2.5 rounded-xl bg-muted/50 text-sm text-foreground hover:bg-muted font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {artistLoadingMore ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                            Load More Songs
+                          </button>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
 
