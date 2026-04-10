@@ -410,10 +410,32 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
 
   const loadSongPage = useCallback(async (page: number) => {
     setLoading(true); setActiveMenu(null); g_scrollPos = 0;
-    // bypass cache for explicit page navigation
-    const cacheKey = `${query}_${langFilter}_${page}`;
+
+    // JioSaavn API max ~20 pages — for higher pages use query variations
+    const MAX_API_PAGE = 20;
+    let actualQuery = query;
+    let actualPage = page;
+
+    if (page > MAX_API_PAGE) {
+      // rotate through query variations to get different results
+      const variations = [
+        `${query} hits`,
+        `${query} songs`,
+        `${query} best`,
+        `${query} popular`,
+        `${query} old`,
+        `${query} new`,
+        `${query} album`,
+        `${query} mp3`,
+      ];
+      const varIndex = (page - MAX_API_PAGE - 1) % variations.length;
+      actualQuery = variations[varIndex];
+      actualPage = Math.floor(Math.random() * 10) + 1;
+    }
+
+    const cacheKey = `${actualQuery}_${langFilter}_${actualPage}`;
     g_pageCache.delete(cacheKey);
-    const data = await searchSongs(query, langFilter, page);
+    const data = await searchSongs(actualQuery, langFilter, actualPage);
     setSongResults(data.tracks); setCurrentPage(page); setTotalResults(data.total);
     setLoading(false);
     document.getElementById("search-results-container")?.scrollTo({ top: 0, behavior: 'smooth' });
