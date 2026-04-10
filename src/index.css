@@ -210,6 +210,12 @@
     100% { transform: translateX(100%); }
   }
 
+  @keyframes loadingBar {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(150%); }
+    100% { transform: translateX(-100%); }
+  }
+
   /* Enhanced button styles */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200;

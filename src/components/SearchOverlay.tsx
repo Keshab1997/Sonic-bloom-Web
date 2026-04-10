@@ -799,8 +799,14 @@ const SongRow = ({
         <p className={`text-[13px] font-semibold truncate transition-colors flex items-center gap-1 ${isActive ? "text-primary" : "text-foreground group-hover:text-primary"}`}>
           {track.title}
           {isYoutubeTrack && <span className="text-[8px] bg-red-600/20 text-red-500 px-1.5 py-0.5 rounded font-bold ml-1 flex-shrink-0">YT</span>}
+          {isResolving && <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold ml-1 flex-shrink-0 animate-pulse">Loading...</span>}
         </p>
         <p className="text-[11px] text-muted-foreground truncate">{track.artist}</p>
+        {isResolving && (
+          <div className="mt-1 h-0.5 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full" style={{ width: "40%", animation: "loadingBar 1.5s ease-in-out infinite" }} />
+          </div>
+        )}
       </div>
 
       {track.duration > 0 && (
