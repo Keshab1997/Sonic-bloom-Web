@@ -671,6 +671,17 @@ const SongRow = ({
 
   return (
     <div className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-accent border border-transparent"}`}>
+      <span className="w-6 text-center text-[11px] text-muted-foreground tabular-nums flex-shrink-0 group-hover:hidden">
+        {isActive && playing ? (
+          <span className="flex items-end justify-center gap-0.5 h-4">
+            <span className="w-0.5 h-2 bg-primary rounded-full animate-pulse-glow" />
+            <span className="w-0.5 h-3 bg-primary rounded-full animate-pulse-glow" style={{ animationDelay: "0.15s" }} />
+            <span className="w-0.5 h-2 bg-primary rounded-full animate-pulse-glow" style={{ animationDelay: "0.3s" }} />
+          </span>
+        ) : (
+          index + 1
+        )}
+      </span>
       <div className="relative flex-shrink-0 cursor-pointer" onClick={() => onPlay(track, tracks, index)}>
         <img src={track.cover} alt="" className={`w-12 h-12 rounded-lg object-cover shadow-sm ${isActive ? "ring-2 ring-primary" : ""}`} />
         <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
