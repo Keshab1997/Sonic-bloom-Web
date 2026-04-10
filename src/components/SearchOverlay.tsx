@@ -169,6 +169,8 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   useEffect(() => {
     setPageInputValue(currentPage.toString());
@@ -226,7 +228,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
     setSongResults([]); setYoutubeResults([]); setAlbumResults([]); setArtistResults([]); setPlaylistResults([]);
     setTopResult(null); setArtistSongs(null); setAlbumSongs(null);
     setTotalResults(0); setCurrentPage(1); setYtCurrentPage(1); setActiveMenu(null); g_scrollPos = 0;
-    setIsYoutubeFallback(false);
+    setIsYoutubeFallback(false); setFocusedIndex(-1);
   };
 
   const searchSongs = useCallback(async (q: string, lang: string, page = 1) => {
@@ -448,9 +450,40 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
     setQuery(suggestion); setShowSuggestions(false); addToHistory(suggestion); doSearch(suggestion);
   };
 
+  const getVisibleTracks = useCallback((): Track[] => {
+    if (artistSongs) return artistSongs.songs;
+    if (albumSongs) return albumSongs.songs;
+    if (category === "youtube") return youtubeResults;
+    if (category === "songs") return songResults;
+    return songResults.slice(0, 8);
+  }, [artistSongs, albumSongs, category, youtubeResults, songResults]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && query.trim()) {
+    const tracks = getVisibleTracks();
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setShowSuggestions(false);
+      setFocusedIndex(prev => {
+        const next = Math.min(prev + 1, tracks.length - 1);
+        // scroll into view
+        listRef.current?.querySelectorAll("[data-song-row]")[next]?.scrollIntoView({ block: "nearest" });
+        return next;
+      });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFocusedIndex(prev => {
+        if (prev <= 0) { inputRef.current?.focus(); return -1; }
+        const next = prev - 1;
+        listRef.current?.querySelectorAll("[data-song-row]")[next]?.scrollIntoView({ block: "nearest" });
+        return next;
+      });
+    } else if (e.key === "Enter" && focusedIndex >= 0 && tracks[focusedIndex]) {
+      e.preventDefault();
+      handlePlayClick(tracks[focusedIndex], tracks, focusedIndex);
+    } else if (e.key === "Enter" && query.trim() && focusedIndex < 0) {
       setShowSuggestions(false); addToHistory(query.trim()); doSearch(query.trim());
+    } else if (e.key === "Escape") {
+      onClose();
     }
   };
 
@@ -622,6 +655,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
       track={track} tracks={tracks} index={index} isYt={isYt}
       isActive={currentTrack?.src === track.src}
       liked={isFavorite(track.src)}
+      isFocused={focusedIndex === index}
       {...songRowProps}
     />
   );
@@ -640,6 +674,7 @@ interface SongRowProps {
   activeMenu: number | null;
   showPlaylistSubmenu: boolean;
   newPlaylistName: string;
+  isFocused?: boolean;
   playlists: ReturnType<typeof import("@/hooks/usePlaylists").usePlaylists>["playlists"];
   isDownloaded: (id: string) => boolean;
   isDownloading: (id: string) => boolean;
@@ -660,7 +695,7 @@ interface SongRowProps {
 const SongRow = ({
   track, tracks, index, isYt = false,
   isActive, isPlaying: playing, liked, resolvingId, activeMenu, showPlaylistSubmenu,
-  newPlaylistName, playlists, isDownloaded, isDownloading,
+  newPlaylistName, playlists, isDownloaded, isDownloading, isFocused = false,
   onPlay, onToggleFavorite, onDownload, onMenuToggle, onPlayNext, onAddToQueue,
   onShare, onAddToPlaylist, onCreatePlaylist, onSetShowPlaylistSubmenu,
   onSetNewPlaylistName, onCloseMenu,
@@ -669,8 +704,10 @@ const SongRow = ({
   const isYoutubeTrack = isYt || track.type === "youtube";
   const isResolving = resolvingId === track.songId;
 
+  const formatDur = (s: number) => s > 0 ? `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}` : "";
+
   return (
-    <div className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-accent border border-transparent"}`}>
+    <div data-song-row className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${isActive ? "bg-primary/10 border border-primary/20" : isFocused ? "bg-accent border border-primary/40" : "hover:bg-accent border border-transparent"}`}>
       <span className="w-6 text-center text-[11px] text-muted-foreground tabular-nums flex-shrink-0 group-hover:hidden">
         {isActive && playing ? (
           <span className="flex items-end justify-center gap-0.5 h-4">
@@ -706,6 +743,12 @@ const SongRow = ({
         </p>
         <p className="text-[11px] text-muted-foreground truncate">{track.artist}</p>
       </div>
+
+      {track.duration > 0 && (
+        <span className="text-[11px] text-muted-foreground tabular-nums flex-shrink-0 hidden sm:block">
+          {formatDur(track.duration)}
+        </span>
+      )}
 
       <div className="flex items-center gap-0.5 flex-shrink-0">
         {!isYoutubeTrack && (
@@ -796,7 +839,7 @@ const SongRow = ({
           </div>
         </div>
 
-        <div id="search-results-container" className="flex-1 overflow-y-auto px-2 py-3 sm:px-4 sm:py-4 pb-28 sm:pb-6 scroll-smooth" onClick={() => setShowSuggestions(false)}>
+        <div id="search-results-container" ref={listRef} className="flex-1 overflow-y-auto px-2 py-3 sm:px-4 sm:py-4 pb-28 sm:pb-6 scroll-smooth" onClick={() => setShowSuggestions(false)}>
           
           {isInitialLoading && (
             <div className="space-y-2 p-2">
