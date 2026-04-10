@@ -5,7 +5,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { useLocalData } from "@/hooks/useLocalData";
 import { usePlaylists } from "@/hooks/usePlaylists";
 import { useDownloads } from "@/hooks/useDownloads";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Track } from "@/data/playlist";
 
 const API_BASE = "https://jiosaavn-api-privatecvc2.vercel.app";
@@ -461,7 +461,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
       try { await navigator.share({ title: track.title, text: shareText, url }); } catch {}
     } else {
       navigator.clipboard.writeText(`${shareText}\n${url}`);
-      toast({ title: "Link Copied", description: "Song link copied to clipboard" });
+      toast.success("Link Copied", { description: "Song link copied to clipboard" });
     }
   };
 
@@ -501,46 +501,46 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
   const handleAddToQueue = async (track: Track) => {
     const isYoutube = track.type === "youtube" || track.src.includes("youtube.com") || track.src.includes("youtu.be");
     if (isYoutube && track.songId) {
-      toast({ title: "Resolving track...", description: track.title });
+      toast.loading("Resolving track...", { description: track.title });
       try {
         const res = await fetch(`/api/yt-stream?id=${track.songId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.audioUrl) {
             addToQueue({ ...track, src: data.audioUrl, type: "audio" as const });
-            toast({ title: "Added to Queue", description: track.title });
+            toast.success("Added to Queue", { description: track.title });
             return;
           }
         }
       } catch (e) {}
       addToQueue(track);
-      toast({ title: "Added to Queue", description: track.title });
+      toast.success("Added to Queue", { description: track.title });
     } else {
       addToQueue(track);
-      toast({ title: "Added to Queue", description: track.title });
+      toast.success("Added to Queue", { description: track.title });
     }
   };
 
   const handlePlayNext = async (track: Track) => {
     const isYoutube = track.type === "youtube" || track.src.includes("youtube.com") || track.src.includes("youtu.be");
     if (isYoutube && track.songId) {
-      toast({ title: "Preparing track...", description: track.title });
+      toast.loading("Preparing track...", { description: track.title });
       try {
         const res = await fetch(`/api/yt-stream?id=${track.songId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.audioUrl) {
             playNext({ ...track, src: data.audioUrl, type: "audio" as const });
-            toast({ title: "Will play next", description: track.title });
+            toast.success("Will play next", { description: track.title });
             return;
           }
         }
       } catch (e) {}
       playNext(track);
-      toast({ title: "Will play next", description: track.title });
+      toast.success("Will play next", { description: track.title });
     } else {
       playNext(track);
-      toast({ title: "Will play next", description: track.title });
+      toast.success("Will play next", { description: track.title });
     }
   };
 
