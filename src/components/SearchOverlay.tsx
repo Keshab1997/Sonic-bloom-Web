@@ -124,7 +124,19 @@ const parseSongToTrack = (s: any, idOffset: number): Track | null => {
   };
 };
 
-interface SearchOverlayProps {
+// Global preload cache — resolved YouTube audio URLs
+const g_resolvedUrls = new Map<string, string>();
+
+const preloadYtTrack = async (songId: string) => {
+  if (!songId || g_resolvedUrls.has(songId)) return;
+  try {
+    const res = await fetch(`/api/yt-stream?id=${songId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.audioUrl) g_resolvedUrls.set(songId, data.audioUrl);
+    }
+  } catch { /* ignore */ }
+};
   onClose: () => void;
 }
 
@@ -532,15 +544,27 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
     const isYoutube = track.type === "youtube" || track.src.includes("youtube.com") || track.src.includes("youtu.be");
 
     if (isYoutube && track.songId) {
+      // Check preloaded cache first — instant play!
+      const cached = g_resolvedUrls.get(track.songId);
+      if (cached) {
+        const resolvedTrack = { ...track, src: cached, type: "audio" as const };
+        const newTracks = [...tracks];
+        newTracks[index] = resolvedTrack;
+        playTrackList(newTracks, index);
+        return;
+      }
       setResolvingId(track.songId);
+      const toastId = toast.loading(`⏳ Loading "${track.title}"...`, { description: "Please wait a moment" });
       try {
         const res = await fetch(`/api/yt-stream?id=${track.songId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.audioUrl) {
+            g_resolvedUrls.set(track.songId, data.audioUrl);
             const resolvedTrack = { ...track, src: data.audioUrl, type: "audio" as const };
             const newTracks = [...tracks];
             newTracks[index] = resolvedTrack;
+            toast.success(`▶ Now Playing: ${track.title}`, { id: toastId, duration: 2000 });
             playTrackList(newTracks, index);
             setResolvingId(null);
             return;
@@ -548,6 +572,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
         }
       } catch (e) {
         console.error("Audio resolve failed:", e);
+        toast.error("Failed to load song", { id: toastId });
       }
       setResolvingId(null);
       playTrackList(tracks, index);
@@ -732,7 +757,16 @@ const SongRow = ({
   const formatDur = (s: number) => s > 0 ? `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}` : "";
 
   return (
-    <div data-song-row className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${isActive ? "bg-primary/10 border border-primary/20" : isFocused ? "bg-accent border border-primary/40" : "hover:bg-accent border border-transparent"}`}>
+    <div
+      data-song-row
+      onMouseEnter={() => { if (isYoutubeTrack && track.songId) preloadYtTrack(track.songId); }}
+      className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${
+        isResolving ? "bg-primary/5 border border-primary/30 opacity-80 cursor-wait" :
+        isActive ? "bg-primary/10 border border-primary/20" :
+        isFocused ? "bg-accent border border-primary/40" :
+        "hover:bg-accent border border-transparent"
+      }`}
+    >
       <span className="w-6 text-center text-[11px] text-muted-foreground tabular-nums flex-shrink-0 group-hover:hidden">
         {isActive && playing ? (
           <span className="flex items-end justify-center gap-0.5 h-4">
