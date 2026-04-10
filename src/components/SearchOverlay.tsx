@@ -892,22 +892,17 @@ const SongRow = ({
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  const targetPage = parseInt(e.currentTarget.value, 10);
+                                  const targetPage = parseInt(pageInputValue, 10);
                                   const maxPage = Math.ceil(totalResults / SONGS_PER_PAGE);
                                   if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= maxPage) {
-                                    if (targetPage !== currentPage) {
-                                      loadSongPage(targetPage);
-                                    }
+                                    loadSongPage(targetPage);
                                   } else {
                                     setPageInputValue(currentPage.toString());
                                     toast.error(`Valid pages: 1 to ${maxPage}`);
                                   }
-                                  e.currentTarget.blur();
                                 }
                               }}
-                              onBlur={(e) => {
-                                setPageInputValue(currentPage.toString());
-                              }}
+                              onBlur={() => setPageInputValue(currentPage.toString())}
                               className="w-12 sm:w-16 h-7 px-1 py-0 text-center bg-accent/50 border border-border rounded text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             />
                             of {Math.ceil(totalResults / SONGS_PER_PAGE)})
