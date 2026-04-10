@@ -625,6 +625,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
       {...songRowProps}
     />
   );
+  const isInitialLoading = loading && songResults.length === 0 && youtubeResults.length === 0 && albumResults.length === 0 && artistResults.length === 0 && playlistResults.length === 0 && !topResult && !albumSongs && !artistSongs;
   const hasAnyResults = songResults.length > 0 || youtubeResults.length > 0 || albumResults.length > 0 || artistResults.length > 0 || playlistResults.length > 0 || topResult;
 
 interface SongRowProps {
