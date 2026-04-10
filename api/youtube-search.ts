@@ -86,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Primary: YouTube Data API v3
-  const ytApiKey = process.env.YOUTUBE_API_KEY;
+  const ytApiKey = process.env.YOUTUBE_API_KEY || "AIzaSyBh89or-LW7PHw0wF536qaO4atF-xihI_Q";
   if (ytApiKey) {
     try {
       const maxResults = 25;
