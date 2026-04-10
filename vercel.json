@@ -5,7 +5,7 @@
     { "source": "/api/proxy-audio", "destination": "/api/proxy-audio" },
     { "source": "/api/proxy-yt-audio", "destination": "/api/proxy-yt-audio" },
     { "source": "/api/proxy-yt-download", "destination": "/api/proxy-yt-download" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|icons/|sw\\.js|manifest\\.json|favicon\\.ico).*)", "destination": "/index.html" }
   ],
   "functions": {
     "api/proxy-yt-download.ts": {
