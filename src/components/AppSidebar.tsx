@@ -15,7 +15,6 @@ const navItems = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Youtube, label: "YouTube Music", path: "/youtube" },
   { icon: Download, label: "Downloads", path: "/downloads" },
-  { icon: Youtube, label: "YT Music (Web)", path: "https://music.youtube.com/", external: true },
 ];
 
 export const AppSidebar = () => {
