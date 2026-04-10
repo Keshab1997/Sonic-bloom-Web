@@ -9,7 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Track } from "@/data/playlist";
 
 const API_BASE = "https://jiosaavn-api-privatecvc2.vercel.app";
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 300;
 const SONGS_PER_PAGE = 40;
 
 type SearchCategory = "all" | "songs" | "albums" | "artists" | "playlists" | "youtube";
@@ -584,79 +584,151 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
     { key: "playlists", label: "Playlists", icon: <ListMusic size={13} /> },
   ];
 
-  const isInitialLoading = loading && songResults.length === 0 && youtubeResults.length === 0 && albumResults.length === 0 && artistResults.length === 0 && playlistResults.length === 0 && !topResult && !albumSongs && !artistSongs;
+  const songRowProps = {
+    isPlaying,
+    resolvingId,
+    activeMenu,
+    showPlaylistSubmenu,
+    newPlaylistName,
+    playlists,
+    isDownloaded,
+    isDownloading,
+    onPlay: handlePlayClick,
+    onToggleFavorite: toggleFavorite,
+    onDownload: downloadTrack,
+    onMenuToggle: (i: number) => setActiveMenu(prev => prev === i ? null : i),
+    onPlayNext: handlePlayNext,
+    onAddToQueue: handleAddToQueue,
+    onShare: handleShare,
+    onAddToPlaylist: (plId: string, track: Track) => { addToPlaylist(plId, track); setActiveMenu(null); setShowPlaylistSubmenu(false); },
+    onCreatePlaylist: (name: string, track: Track) => { const pl = createPlaylist(name); addToPlaylist(pl.id, track); setNewPlaylistName(""); setActiveMenu(null); setShowPlaylistSubmenu(false); },
+    onSetShowPlaylistSubmenu: setShowPlaylistSubmenu,
+    onSetNewPlaylistName: setNewPlaylistName,
+    onCloseMenu: () => { setActiveMenu(null); setShowPlaylistSubmenu(false); },
+  };
+
+  const renderSongRow = (track: Track, tracks: Track[], index: number, isYt = false) => (
+    <SongRow
+      key={`${track.src}-${index}`}
+      track={track} tracks={tracks} index={index} isYt={isYt}
+      isActive={currentTrack?.src === track.src}
+      liked={isFavorite(track.src)}
+      {...songRowProps}
+    />
+  );
   const hasAnyResults = songResults.length > 0 || youtubeResults.length > 0 || albumResults.length > 0 || artistResults.length > 0 || playlistResults.length > 0 || topResult;
 
-  const SongRow = ({ track, tracks, index, isYt = false }: { track: Track; tracks: Track[]; index: number; isYt?: boolean }) => {
-    const isActive = currentTrack?.src === track.src;
-    const liked = isFavorite(track.src);
-    const menuOpen = activeMenu === index;
-    const isYoutubeTrack = isYt || track.type === "youtube";
-    const isResolving = resolvingId === track.songId;
+interface SongRowProps {
+  track: Track;
+  tracks: Track[];
+  index: number;
+  isYt?: boolean;
+  isActive: boolean;
+  isPlaying: boolean;
+  liked: boolean;
+  resolvingId: string | null;
+  activeMenu: number | null;
+  showPlaylistSubmenu: boolean;
+  newPlaylistName: string;
+  playlists: ReturnType<typeof import("@/hooks/usePlaylists").usePlaylists>["playlists"];
+  isDownloaded: (id: string) => boolean;
+  isDownloading: (id: string) => boolean;
+  onPlay: (track: Track, tracks: Track[], index: number) => void;
+  onToggleFavorite: (track: Track) => void;
+  onDownload: (track: Track) => void;
+  onMenuToggle: (index: number) => void;
+  onPlayNext: (track: Track) => void;
+  onAddToQueue: (track: Track) => void;
+  onShare: (track: Track) => void;
+  onAddToPlaylist: (plId: string, track: Track) => void;
+  onCreatePlaylist: (name: string, track: Track) => void;
+  onSetShowPlaylistSubmenu: (v: boolean) => void;
+  onSetNewPlaylistName: (v: string) => void;
+  onCloseMenu: () => void;
+}
 
-    return (
-      <div className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-accent border border-transparent"}`}>
-        <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlayClick(track, tracks, index)}>
-          <img src={track.cover} alt="" className={`w-12 h-12 rounded-lg object-cover shadow-sm ${isActive ? "ring-2 ring-primary" : ""}`} />
-          <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
-            {isResolving ? (
-              <Loader2 size={16} className="text-white animate-spin" />
-            ) : isActive && isPlaying ? (
-              <div className="flex items-end gap-0.5">
-                <span className="w-0.5 h-2 bg-primary rounded-full animate-pulse-glow" />
-                <span className="w-0.5 h-3 bg-primary rounded-full animate-pulse-glow" style={{ animationDelay: "0.15s" }} />
-                <span className="w-0.5 h-2 bg-primary rounded-full animate-pulse-glow" style={{ animationDelay: "0.3s" }} />
-              </div>
-            ) : (
-              <Play size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity ml-0.5" />
-            )}
-          </div>
-        </div>
-        
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handlePlayClick(track, tracks, index)}>
-          <p className={`text-[13px] font-semibold truncate transition-colors flex items-center gap-1 ${isActive ? "text-primary" : "text-foreground group-hover:text-primary"}`}>
-            {track.title}
-            {isYoutubeTrack && <span className="text-[8px] bg-red-600/20 text-red-500 px-1.5 py-0.5 rounded font-bold ml-1 flex-shrink-0">YT</span>}
-          </p>
-          <p className="text-[11px] text-muted-foreground truncate">{track.artist}</p>
-        </div>
+const SongRow = ({
+  track, tracks, index, isYt = false,
+  isActive, isPlaying: playing, liked, resolvingId, activeMenu, showPlaylistSubmenu,
+  newPlaylistName, playlists, isDownloaded, isDownloading,
+  onPlay, onToggleFavorite, onDownload, onMenuToggle, onPlayNext, onAddToQueue,
+  onShare, onAddToPlaylist, onCreatePlaylist, onSetShowPlaylistSubmenu,
+  onSetNewPlaylistName, onCloseMenu,
+}: SongRowProps) => {
+  const menuOpen = activeMenu === index;
+  const isYoutubeTrack = isYt || track.type === "youtube";
+  const isResolving = resolvingId === track.songId;
 
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {!isYoutubeTrack && (
-            <button onClick={() => downloadTrack(track)} disabled={isDownloaded(track.songId || track.src) || isDownloading(track.songId || track.src)} className={`p-2 rounded-full transition-all ${isDownloaded(track.songId || track.src) ? "text-green-500" : isDownloading(track.songId || track.src) ? "text-yellow-500" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`} title="Download">
-              {isDownloading(track.songId || track.src) ? <Loader2 size={16} className="animate-spin" /> : isDownloaded(track.songId || track.src) ? <CheckCircle size={16} /> : <Download size={16} />}
-            </button>
+  return (
+    <div className={`flex items-center gap-3 p-2.5 rounded-xl transition-all group ${isActive ? "bg-primary/10 border border-primary/20" : "hover:bg-accent border border-transparent"}`}>
+      <div className="relative flex-shrink-0 cursor-pointer" onClick={() => onPlay(track, tracks, index)}>
+        <img src={track.cover} alt="" className={`w-12 h-12 rounded-lg object-cover shadow-sm ${isActive ? "ring-2 ring-primary" : ""}`} />
+        <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+          {isResolving ? (
+            <Loader2 size={16} className="text-white animate-spin" />
+          ) : isActive && playing ? (
+            <div className="flex items-end gap-0.5">
+              <span className="w-0.5 h-2 bg-primary rounded-full animate-pulse-glow" />
+              <span className="w-0.5 h-3 bg-primary rounded-full animate-pulse-glow" style={{ animationDelay: "0.15s" }} />
+              <span className="w-0.5 h-2 bg-primary rounded-full animate-pulse-glow" style={{ animationDelay: "0.3s" }} />
+            </div>
+          ) : (
+            <Play size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity ml-0.5" />
           )}
-          <button onClick={() => toggleFavorite(track)} className={`p-2 rounded-full transition-all ${liked ? "text-red-500" : "text-muted-foreground hover:text-red-500 hover:bg-accent"}`} title="Like">
-            <Heart size={16} fill={liked ? "currentColor" : "none"} />
-          </button>
-          <div className="relative">
-            <button onClick={() => { setActiveMenu(menuOpen ? null : index); setShowPlaylistSubmenu(false); }} className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
-              <MoreVertical size={16} />
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => { setActiveMenu(null); setShowPlaylistSubmenu(false); }} />
-                <div className="absolute right-0 top-full mt-1 z-50 w-44 glass-heavy border border-border rounded-lg shadow-2xl overflow-hidden py-1">
-                  <button onClick={() => { handlePlayNext(track); setActiveMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><PlaySquare size={14} /> Play Next</button>
-                  <button onClick={() => { handleAddToQueue(track); setActiveMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><ListPlus size={14} /> Add to Queue</button>
-                  <button onClick={() => handleShare(track)} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><Share2 size={14} /> Share</button>
-                  <div className="h-px bg-border my-1" />
-                  <button onClick={() => setShowPlaylistSubmenu(!showPlaylistSubmenu)} className="w-full flex items-center justify-between px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><div className="flex items-center gap-2.5"><Plus size={14} /> Add to Playlist</div><ChevronRight size={12} className={showPlaylistSubmenu ? "rotate-90" : ""} /></button>
-                  {showPlaylistSubmenu && (
-                    <div className="bg-background/50 max-h-32 overflow-y-auto border-t border-border mt-1">
-                      {playlists.map((pl) => <button key={pl.id} onClick={() => { addToPlaylist(pl.id, track); setActiveMenu(null); setShowPlaylistSubmenu(false); }} className="w-full text-left px-4 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent truncate">{pl.name}</button>)}
-                      <div className="px-2 py-1.5 border-t border-border"><input type="text" value={newPlaylistName} onChange={(e) => setNewPlaylistName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && newPlaylistName.trim()) { const pl = createPlaylist(newPlaylistName.trim()); addToPlaylist(pl.id, track); setNewPlaylistName(""); setActiveMenu(null); setShowPlaylistSubmenu(false); } }} placeholder="New playlist..." className="w-full text-[10px] px-2 py-1 rounded border border-border bg-background focus:outline-none focus:border-primary" /></div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </div>
-    );
-  };
+
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onPlay(track, tracks, index)}>
+        <p className={`text-[13px] font-semibold truncate transition-colors flex items-center gap-1 ${isActive ? "text-primary" : "text-foreground group-hover:text-primary"}`}>
+          {track.title}
+          {isYoutubeTrack && <span className="text-[8px] bg-red-600/20 text-red-500 px-1.5 py-0.5 rounded font-bold ml-1 flex-shrink-0">YT</span>}
+        </p>
+        <p className="text-[11px] text-muted-foreground truncate">{track.artist}</p>
+      </div>
+
+      <div className="flex items-center gap-0.5 flex-shrink-0">
+        {!isYoutubeTrack && (
+          <button onClick={() => onDownload(track)} disabled={isDownloaded(track.songId || track.src) || isDownloading(track.songId || track.src)} className={`p-2 rounded-full transition-all ${isDownloaded(track.songId || track.src) ? "text-green-500" : isDownloading(track.songId || track.src) ? "text-yellow-500" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`} title="Download">
+            {isDownloading(track.songId || track.src) ? <Loader2 size={16} className="animate-spin" /> : isDownloaded(track.songId || track.src) ? <CheckCircle size={16} /> : <Download size={16} />}
+          </button>
+        )}
+        <button onClick={() => onToggleFavorite(track)} className={`p-2 rounded-full transition-all ${liked ? "text-red-500" : "text-muted-foreground hover:text-red-500 hover:bg-accent"}`} title="Like">
+          <Heart size={16} fill={liked ? "currentColor" : "none"} />
+        </button>
+        <div className="relative">
+          <button onClick={() => { onMenuToggle(index); onSetShowPlaylistSubmenu(false); }} className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-all">
+            <MoreVertical size={16} />
+          </button>
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={onCloseMenu} />
+              <div className="absolute right-0 top-full mt-1 z-50 w-44 glass-heavy border border-border rounded-lg shadow-2xl overflow-hidden py-1">
+                <button onClick={() => { onPlayNext(track); onCloseMenu(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><PlaySquare size={14} /> Play Next</button>
+                <button onClick={() => { onAddToQueue(track); onCloseMenu(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><ListPlus size={14} /> Add to Queue</button>
+                <button onClick={() => onShare(track)} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"><Share2 size={14} /> Share</button>
+                <div className="h-px bg-border my-1" />
+                <button onClick={() => onSetShowPlaylistSubmenu(!showPlaylistSubmenu)} className="w-full flex items-center justify-between px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors">
+                  <div className="flex items-center gap-2.5"><Plus size={14} /> Add to Playlist</div>
+                  <ChevronRight size={12} className={showPlaylistSubmenu ? "rotate-90" : ""} />
+                </button>
+                {showPlaylistSubmenu && (
+                  <div className="bg-background/50 max-h-32 overflow-y-auto border-t border-border mt-1">
+                    {playlists.map((pl) => <button key={pl.id} onClick={() => { onAddToPlaylist(pl.id, track); onCloseMenu(); }} className="w-full text-left px-4 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent truncate">{pl.name}</button>)}
+                    <div className="px-2 py-1.5 border-t border-border">
+                      <input type="text" value={newPlaylistName} onChange={(e) => onSetNewPlaylistName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && newPlaylistName.trim()) { onCreatePlaylist(newPlaylistName.trim(), track); } }}
+                        placeholder="New playlist..." className="w-full text-[10px] px-2 py-1 rounded border border-border bg-background focus:outline-none focus:border-primary" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-start justify-center">
@@ -731,7 +803,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
                 )}
                 <div className="px-1">
                   <div className="flex items-center gap-2 mb-3 px-1"><TrendingUp size={18} className="text-primary" /><h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Trending Now</h3></div>
-                  {trendingLoading ? <div className="flex items-center justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : trending.map((track, i) => <SongRow key={track.src} track={track} tracks={trending} index={i} />)}
+                  {trendingLoading ? <div className="flex items-center justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : trending.map((track, i) => renderSongRow(track, trending, i))}
                 </div>
               </>
             )}
@@ -781,7 +853,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
                       </div>
                     </div>
                     <div className="space-y-0.5">
-                      {youtubeResults.map((track, i) => <SongRow key={`${track.src}-${i}`} track={track} tracks={youtubeResults} index={i} isYt={true} />)}
+                      {youtubeResults.map((track, i) => renderSongRow(track, youtubeResults, i, true))}
                     </div>
                     <div className="flex items-center justify-between mt-6 pt-4 border-t border-border px-2">
                       <button onClick={() => loadYoutubePage(ytCurrentPage - 1)} disabled={ytCurrentPage === 1 || loading} className="px-4 py-2 rounded-xl bg-muted text-sm font-medium hover:bg-accent disabled:opacity-50 flex items-center gap-2"><ChevronLeft size={16} /> Prev</button>
@@ -854,7 +926,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
                       </div>
                     </div>
                     <div className="space-y-0.5">
-                      {songResults.slice(0, category === "all" ? 8 : SONGS_PER_PAGE).map((track, i) => <SongRow key={`${track.src}-${i}`} track={track} tracks={songResults} index={i} isYt={track.type === "youtube"} />)}
+                      {songResults.slice(0, category === "all" ? 8 : SONGS_PER_PAGE).map((track, i) => renderSongRow(track, songResults, i, track.type === "youtube"))}
                     </div>
                     {category === "all" && songResults.length > 8 && (
                       <button onClick={() => handleCategoryChange("songs")} className="w-full mt-3 py-2.5 rounded-xl bg-muted/50 text-sm text-foreground hover:bg-muted font-medium transition-colors">Show all {totalResults} songs</button>
@@ -877,7 +949,7 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
                       </h3>
                     </div>
                     <div className="space-y-0.5">
-                      {youtubeResults.slice(0, 5).map((track, i) => <SongRow key={`${track.src}-${i}`} track={track} tracks={youtubeResults} index={i} isYt={true} />)}
+                      {youtubeResults.slice(0, 5).map((track, i) => renderSongRow(track, youtubeResults, i, true))}
                     </div>
                     <button onClick={() => handleCategoryChange("youtube")} className="w-full mt-3 py-2.5 rounded-xl bg-muted/50 text-sm text-foreground hover:bg-muted font-medium transition-colors">
                       Show more YouTube videos
@@ -888,13 +960,13 @@ export const SearchOverlay = ({ onClose }: SearchOverlayProps) => {
                 {albumSongs && (
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4 px-2"><h3 className="text-sm font-bold text-foreground flex items-center gap-2"><Disc3 size={16} className="text-primary" /> {albumSongs.name}</h3><button onClick={() => { setAlbumSongs(null); g_scrollPos = 0; }} className="p-1.5 rounded-full bg-muted hover:bg-accent"><X size={16} /></button></div>
-                    {albumLoading ? <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : <div className="space-y-0.5">{albumSongs.songs.map((track, i) => <SongRow key={track.src} track={track} tracks={albumSongs.songs} index={i} />)}</div>}
+                    {albumLoading ? <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : <div className="space-y-0.5">{albumSongs.songs.map((track, i) => renderSongRow(track, albumSongs.songs, i))}</div>}
                   </div>
                 )}
                 {artistSongs && (
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4 px-2"><h3 className="text-sm font-bold text-foreground flex items-center gap-2"><User size={16} className="text-primary" /> {artistSongs.name}</h3><button onClick={() => { setArtistSongs(null); g_scrollPos = 0; }} className="p-1.5 rounded-full bg-muted hover:bg-accent"><X size={16} /></button></div>
-                    {artistLoading ? <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : <div className="space-y-0.5">{artistSongs.songs.map((track, i) => <SongRow key={track.src} track={track} tracks={artistSongs.songs} index={i} />)}</div>}
+                    {artistLoading ? <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-primary" /></div> : <div className="space-y-0.5">{artistSongs.songs.map((track, i) => renderSongRow(track, artistSongs.songs, i))}</div>}
                   </div>
                 )}
 
