@@ -1036,6 +1036,17 @@ const SongRow = ({
                         >
                           <Play size={12} fill="currentColor" /> Play All
                         </button>
+                        <button
+                          onClick={() => {
+                            const randomPage = Math.floor(Math.random() * 8) + 1;
+                            fetchArtistSongs(artistSongs.name, randomPage);
+                          }}
+                          disabled={artistLoading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium hover:bg-accent transition-all disabled:opacity-50"
+                          title="Load different songs"
+                        >
+                          <RefreshCw size={12} /> Shuffle
+                        </button>
                         <button onClick={() => { setArtistSongs(null); g_scrollPos = 0; }} className="p-1.5 rounded-full bg-muted hover:bg-accent"><X size={16} /></button>
                       </div>
                     </div>
