@@ -137,6 +137,8 @@ const preloadYtTrack = async (songId: string) => {
     }
   } catch { /* ignore */ }
 };
+
+interface SearchOverlayProps {
   onClose: () => void;
 }
 
