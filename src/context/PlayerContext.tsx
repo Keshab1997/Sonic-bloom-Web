@@ -628,13 +628,30 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (nextTrack?.type === "youtube") {
       setDuration(0);
       setIsPlaying(false);
-      setTimeout(() => setIsPlaying(true), PLAYBACK_START_DELAY_MS);
+      // Auto-resume on mobile when returning to app
+      setTimeout(() => {
+        if (document.visibilityState === "hidden") {
+          setTimeout(() => setIsPlaying(true), 500);
+        } else {
+          setIsPlaying(true);
+        }
+      }, PLAYBACK_START_DELAY_MS);
     } else {
       setIsPlaying(false);
-      // Resume audio context before playing next track - critical for background playback
       resumeAudioContext();
       setTimeout(() => {
-        audioRef.current?.play().catch(() => {});
+        const playPromise = audioRef.current?.play();
+        if (document.visibilityState === "hidden") {
+          // On mobile hidden: wait and retry when visible
+          playPromise?.catch(() => {
+            setTimeout(() => {
+              resumeAudioContext();
+              audioRef.current?.play().catch(() => {});
+            }, 500);
+          });
+        } else {
+          playPromise?.catch(() => {});
+        }
         setIsPlaying(true);
       }, PLAYBACK_SHORT_DELAY_MS);
     }
@@ -879,32 +896,47 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [currentTrack?.type, isPlaying]);
 
-  // Visibility change — handle YouTube background playback
+  // Visibility change — handle background playback + auto-next on mobile
   const wasPlayingBeforeHidden = useRef(false);
+  const lastTrackRef = useRef<string | null>(null);
+  const nextTriggeredRef = useRef(false);
   useEffect(() => {
-    const handleVisibility = () => {
-      if (currentTrack?.type !== "youtube") return;
+    const handleVisibility = async () => {
+      const isHidden = document.visibilityState === "hidden";
+      const isYouTube = currentTrack?.type === "youtube";
       
-      if (document.visibilityState === "hidden") {
-        // Save current playing state before hiding
+      if (isHidden) {
         wasPlayingBeforeHidden.current = isPlaying;
-        // Keep playing in background
-        if (isPlaying && ytPlayerRef.current) {
+        lastTrackRef.current = currentTrack?.src || null;
+        if (isYouTube && isPlaying && ytPlayerRef.current) {
           ytPlayerRef.current.getInternalPlayer()?.playVideo?.();
         }
-      } else if (document.visibilityState === "visible") {
-        // Resume playback when tab becomes visible again
-        if (wasPlayingBeforeHidden.current && ytPlayerRef.current) {
-          setTimeout(() => {
-            ytPlayerRef.current?.getInternalPlayer()?.playVideo?.();
+      } else {
+        // Tab became visible - check if we need to resume
+        if (wasPlayingBeforeHidden.current) {
+          if (isYouTube && ytPlayerRef.current) {
+            setTimeout(() => {
+              ytPlayerRef.current?.getInternalPlayer()?.playVideo?.();
+              setIsPlaying(true);
+            }, 200);
+          } else if (!isYouTube && audioRef.current && progress >= duration - 1) {
+            // Previous track ended while hidden - trigger next
+            if (!nextTriggeredRef.current && queue.length > 0) {
+              nextTriggeredRef.current = true;
+              next();
+              nextTriggeredRef.current = false;
+            }
+          } else if (audioRef.current?.paused) {
+            resumeAudioContext();
+            audioRef.current.play().catch(() => {});
             setIsPlaying(true);
-          }, 100);
+          }
         }
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [currentTrack?.type, isPlaying]);
+  }, [currentTrack?.type, currentTrack?.src, isPlaying, progress, duration, queue.length, next, resumeAudioContext]);
 
   // Control YouTube playback when isPlaying changes
   useEffect(() => {
