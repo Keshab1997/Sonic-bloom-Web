@@ -4,10 +4,37 @@
   "description": "Premium music player with synced lyrics, equalizer, and multi-language support. Created by Keshab Sarkar",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
   "background_color": "hsl(240, 6%, 7%)",
   "theme_color": "hsl(240, 6%, 7%)",
   "orientation": "portrait",
   "categories": ["music", "entertainment"],
+  "scope": "/",
+  "id": "/",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Search Music",
+      "short_name": "Search",
+      "description": "Search for music on YouTube",
+      "url": "/search",
+      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "My Library",
+      "short_name": "Library",
+      "description": "View your saved music",
+      "url": "/library",
+      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Liked Songs",
+      "short_name": "Liked",
+      "description": "View liked songs",
+      "url": "/liked",
+      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -21,5 +48,14 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

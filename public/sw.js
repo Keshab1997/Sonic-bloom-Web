@@ -1,10 +1,11 @@
-const CACHE_NAME = "sonic-bloom-v2";
+const CACHE_NAME = "sonic-bloom-v3";
 const STATIC_ASSETS = ["/", "/index.html"];
 
 // Separate caches for different content types
-const STATIC_CACHE = "sonic-bloom-static-v2";
-const API_CACHE = "sonic-bloom-api-v2";
-const MEDIA_CACHE = "sonic-bloom-media-v2";
+const STATIC_CACHE = "sonic-bloom-static-v3";
+const API_CACHE = "sonic-bloom-api-v3";
+const MEDIA_CACHE = "sonic-bloom-media-v3";
+const OFFLINE_CACHE = "sonic-bloom-offline-v3";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -18,7 +19,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== STATIC_CACHE && k !== API_CACHE && k !== MEDIA_CACHE)
+          .filter((k) => !k.startsWith("sonic-bloom-v"))
           .map((k) => caches.delete(k))
       )
     )
@@ -42,6 +43,17 @@ function isImageRequest(request) {
   return request.destination === "image";
 }
 
+// Background sync for downloads
+self.addEventListener("sync", (event) => {
+  if (event.tag === "sync-downloads") {
+    event.waitUntil(syncDownloads());
+  }
+});
+
+async function syncDownloads() {
+  // Handle offline downloads when back online
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -63,7 +75,6 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Only cache successful responses
           if (isCacheable(response)) {
             const clone = response.clone();
             caches.open(API_CACHE).then((cache) => cache.put(request, clone));
@@ -81,7 +92,6 @@ self.addEventListener("fetch", (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
-          // Only cache successful responses (not 206 partial)
           if (isCacheable(response)) {
             const clone = response.clone();
             caches.open(MEDIA_CACHE).then((cache) => cache.put(request, clone));
@@ -98,7 +108,6 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        // Only cache successful responses (not 206 partial)
         if (isCacheable(response)) {
           const clone = response.clone();
           caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone));
@@ -107,4 +116,11 @@ self.addEventListener("fetch", (event) => {
       });
     }).catch(() => fetch(request))
   );
+});
+
+// Handle messages from the app
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
