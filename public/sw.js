@@ -1,11 +1,11 @@
-const CACHE_NAME = "sonic-bloom-v3";
+const CACHE_NAME = "sonic-bloom-v4";
 const STATIC_ASSETS = ["/", "/index.html"];
 
 // Separate caches for different content types
-const STATIC_CACHE = "sonic-bloom-static-v3";
-const API_CACHE = "sonic-bloom-api-v3";
-const MEDIA_CACHE = "sonic-bloom-media-v3";
-const OFFLINE_CACHE = "sonic-bloom-offline-v3";
+const STATIC_CACHE = "sonic-bloom-static-v4";
+const API_CACHE = "sonic-bloom-api-v4";
+const MEDIA_CACHE = "sonic-bloom-media-v4";
+const OFFLINE_CACHE = "sonic-bloom-offline-v4";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
