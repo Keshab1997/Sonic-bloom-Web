@@ -1,5 +1,28 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { INVIDIOUS_INSTANCES, INVIDIOUS_REQUEST_TIMEOUT, INVIDIOUS_HEADERS, PIPED_INSTANCES } from "./lib/invidious.js";
+import { INVIDIOUS_INSTANCES, INVIDIOUS_REQUEST_TIMEOUT, PIPED_INSTANCES, PIPED_INSTANCES_API, INVIDIOUS_HEADERS } from "./lib/invidious.js";
+import { checkRateLimit, getRateLimitHeaders, defaultRateLimits } from "./lib/rate-limiter.js";
+
+interface PipedInstance {
+  url: string;
+  cdn: string | null;
+}
+
+async function getPipedInstancesFromAPI(): Promise<string[]> {
+  try {
+    const res = await fetch(`${PIPED_INSTANCES_API}/instances?type=piped`, {
+      headers: INVIDIOUS_HEADERS,
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as { piped: PipedInstance[] };
+    const instances = data.piped
+      .filter((i) => i.cdn)
+      .slice(0, 8)
+      .map((i) => i.url);
+    return instances;
+  } catch {
+    return [];
+  }
+}
 import { checkRateLimit, getRateLimitHeaders, defaultRateLimits } from "./lib/rate-limiter.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -115,17 +138,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return null;
   };
 
-  // Try Invidious first (batch of 4)
-  const firstBatch = INVIDIOUS_INSTANCES.slice(0, 4);
-  const batchResults = await Promise.allSettled(firstBatch.map(tryInvidious));
-  for (const result of batchResults) {
-    if (result.status === "fulfilled" && result.value) {
-      return res.status(200).json(result.value);
+  // Try dynamic instances API first
+  const dynamicInstances = await getPipedInstancesFromAPI();
+  if (dynamicInstances.length > 0) {
+    const batch = dynamicInstances.slice(0, 4);
+    const results = await Promise.allSettled(batch.map(tryPiped));
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        return res.status(200).json(result.value);
+      }
     }
   }
 
-  // Try Piped instances (batch of 3)
-  const pipedBatch = PIPED_INSTANCES.slice(0, 3);
+  // Try static Piped list
+  const pipedBatch = PIPED_INSTANCES.slice(0, 4);
   const pipedResults = await Promise.allSettled(pipedBatch.map(tryPiped));
   for (const result of pipedResults) {
     if (result.status === "fulfilled" && result.value) {
@@ -133,19 +159,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  // Try remaining Invidious
-  const remaining = INVIDIOUS_INSTANCES.slice(4);
-  for (const instance of remaining) {
-    const result = await tryInvidious(instance);
+  // Try remaining Piped
+  const remainingPiped = PIPED_INSTANCES.slice(4);
+  for (const instance of remainingPiped) {
+    const result = await tryPiped(instance);
     if (result) {
       return res.status(200).json(result);
     }
   }
 
-  // Try remaining Piped
-  const remainingPiped = PIPED_INSTANCES.slice(3);
-  for (const instance of remainingPiped) {
-    const result = await tryPiped(instance);
+  // Try Invidious (batch of 3)
+  const firstBatch = INVIDIOUS_INSTANCES.slice(0, 3);
+  const batchResults = await Promise.allSettled(firstBatch.map(tryInvidious));
+  for (const result of batchResults) {
+    if (result.status === "fulfilled" && result.value) {
+      return res.status(200).json(result.value);
+    }
+  }
+
+  // Try remaining Invidious
+  const remaining = INVIDIOUS_INSTANCES.slice(3);
+  for (const instance of remaining) {
+    const result = await tryInvidious(instance);
     if (result) {
       return res.status(200).json(result);
     }
